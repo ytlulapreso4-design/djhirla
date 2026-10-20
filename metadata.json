@@ -1,0 +1,6 @@
+{
+  "name": "DJ HIRLA | Eletrofunk",
+  "description": "Landing page oficial da DJ HIRLA. Batidas intensas, energia contagiante e a identidade do eletrofunk em cada apresentação. Contratação de shows para eventos e festivais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
