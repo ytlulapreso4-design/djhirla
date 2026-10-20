@@ -62,11 +62,24 @@ export const MediaSlot: React.FC<MediaSlotProps> = ({
                 isLoaded ? 'opacity-100' : 'opacity-0'
               }`}
             />
+          ) : poster ? (
+            <img
+              src={poster}
+              alt={alt || title}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              onLoad={() => setIsLoaded(true)}
+              onError={() => setHasError(true)}
+              className={`w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 ${
+                isLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
           ) : (
             <video
               src={src}
               poster={poster}
-              preload="metadata"
+              preload="none"
               muted
               playsInline
               loop

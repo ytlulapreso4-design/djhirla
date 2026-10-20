@@ -117,6 +117,7 @@ export const Hero: React.FC = () => {
             autoPlay
             loop
             playsInline
+            preload="metadata"
             onLoadedData={() => setVideoLoaded(true)}
             onError={() => setVideoError(true)}
             className={`w-full h-full object-cover object-center transition-opacity duration-1000 ${

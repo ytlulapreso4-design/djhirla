@@ -90,6 +90,7 @@ export const Gallery: React.FC = () => {
               <MediaSlot
                 type={item.type}
                 src={item.path}
+                poster={item.poster}
                 title={item.title}
                 subtitle={item.subtitle}
                 badge={item.badge}

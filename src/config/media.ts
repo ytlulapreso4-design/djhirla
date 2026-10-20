@@ -10,6 +10,7 @@ export interface GalleryItem {
   id: string;
   type: 'image' | 'video';
   path: string;
+  poster?: string;
   title: string;
   subtitle: string;
   badge: string;
@@ -42,7 +43,7 @@ export const ARTIST_CONFIG = {
     heroVideo: {
       path: '/videos/video.MP4',
       label: 'Hero Background Video',
-      fallbackPoster: '/images/Hirla.png',
+      fallbackPoster: '/videos/video-poster.jpg',
       format: 'MP4 HD Ao Vivo • DJ Hirla',
       targetLocation: 'public/videos/video.MP4',
     },
@@ -59,6 +60,7 @@ export const ARTIST_CONFIG = {
         id: 'gallery-festival-video',
         type: 'video',
         path: '/videos/DJ_HIRLA_video_5MB.mp4',
+        poster: '/videos/festival-poster.jpg',
         title: 'Aftermovie Oficial — Festival & Pirotecnia',
         subtitle: 'Palco principal, efeitos visuais, fumaça, chamas e multidão cantando com a DJ Hirla',
         commentary: 'Apresentação histórica em festival com estrutura de grande porte, canhões de fumaça, pirotecnia no drop e milhares de pessoas cantando junto em coro com a DJ Hirla.',
@@ -81,6 +83,7 @@ export const ARTIST_CONFIG = {
         id: 'gallery-video-01',
         type: 'video',
         path: '/videos/video.MP4',
+        poster: '/videos/video-poster.jpg',
         title: 'Show Ao Vivo — Drop do Grave',
         subtitle: 'A energia da pista no clímax da apresentação',
         commentary: 'O grave no comando e o público vibrando em sintonia com as viradas de eletrofunk.',
