@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { X, Play, Volume2, ArrowRight } from 'lucide-react';
-import { GalleryItem, ARTIST_CONFIG } from '../config/media.ts';
+import React, { useEffect, useRef } from 'react';
+import { X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { GalleryItem } from '../config/media.ts';
 
 interface LightboxModalProps {
   item: GalleryItem | null;
@@ -8,44 +8,75 @@ interface LightboxModalProps {
 }
 
 export const LightboxModal: React.FC<LightboxModalProps> = ({ item, onClose }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleClose = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    onClose();
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') handleClose();
     };
+
     if (item) {
       document.body.style.overflow = 'hidden';
       window.addEventListener('keydown', handleKeyDown);
     }
+
     return () => {
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [item, onClose]);
+  }, [item]);
 
   if (!item) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 sm:p-6 md:p-10 animate-fade-in"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-3 sm:p-6 md:p-8 animate-fade-in overflow-y-auto"
+      onClick={handleClose}
     >
-      {/* Close button */}
+      {/* Primary Floating Screen Close Button (Works seamlessly with mobile notch & safe areas) */}
       <button
-        onClick={onClose}
-        className="absolute top-6 right-6 z-50 p-2.5 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleClose();
+        }}
+        className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[70] p-3 text-white bg-black/80 hover:bg-[#F000B8] border border-white/25 transition-all rounded-full shadow-2xl cursor-pointer flex items-center justify-center group active:scale-95"
         aria-label="Fechar visualização"
       >
-        <X className="w-6 h-6" />
+        <X className="w-6 h-6 transition-transform group-hover:scale-110" />
       </button>
 
+      {/* Modal Dialog Card */}
       <div
-        className="relative max-w-5xl w-full bg-[#111114] border border-white/15 overflow-hidden shadow-2xl flex flex-col"
+        className="relative max-w-5xl w-full bg-[#111114] border border-white/20 overflow-hidden shadow-2xl flex flex-col my-auto z-[60]"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Card Header Close Button (Directly inside modal for 100% mobile reachability) */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClose();
+          }}
+          className="absolute top-3 right-3 z-30 flex items-center gap-1.5 px-3 py-1.5 bg-black/85 hover:bg-[#F000B8] text-white border border-white/20 text-xs font-mono uppercase tracking-wider backdrop-blur-md transition-all shadow-xl cursor-pointer group active:scale-95"
+          aria-label="Fechar"
+        >
+          <X className="w-4 h-4 transition-transform group-hover:rotate-90" />
+          <span className="font-semibold">Fechar</span>
+        </button>
+
         {/* Media Container */}
-        <div className="relative w-full bg-black min-h-[340px] max-h-[70vh] flex items-center justify-center overflow-hidden">
+        <div className="relative w-full bg-black min-h-[280px] sm:min-h-[360px] max-h-[70vh] flex items-center justify-center overflow-hidden">
           {item.type === 'video' ? (
             <video
+              ref={videoRef}
               src={item.path}
               controls
               autoPlay
@@ -60,65 +91,59 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({ item, onClose }) =
               alt={item.title}
               referrerPolicy="no-referrer"
               className="w-full max-h-[70vh] object-contain"
-              onError={(e) => {
-                // If image isn't in public yet, show styled message inside modal
-                const target = e.currentTarget;
-                target.style.display = 'none';
-                const parent = target.parentElement;
-                if (parent && !parent.querySelector('.modal-fallback')) {
-                  const fallbackDiv = document.createElement('div');
-                  fallbackDiv.className = 'modal-fallback p-12 text-center flex flex-col items-center justify-center';
-                  fallbackDiv.innerHTML = `
-                    <div class="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4 text-[#8B2CFF]">
-                      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    </div>
-                    <h3 class="text-xl font-bold font-display uppercase tracking-wider text-white mb-2">${item.title}</h3>
-                    <p class="text-sm text-zinc-400 max-w-md mb-4">${item.subtitle}</p>
-                    <code class="text-xs font-mono text-[#8B2CFF] bg-black/60 px-3 py-1 border border-white/10">Arquivo aguardado: public${item.path}</code>
-                  `;
-                  parent.appendChild(fallbackDiv);
-                }
-              }}
             />
           )}
         </div>
 
-        {/* Modal Info Bar */}
-        <div className="p-6 bg-[#0E0E11] border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
+        {/* Modal Info Bar & Actions */}
+        <div className="p-5 sm:p-6 bg-[#0E0E11] border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="pr-4">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[11px] font-mono tracking-wider uppercase text-[#F000B8] font-semibold">
                 {item.badge}
               </span>
               <span className="text-zinc-500 font-mono text-xs">/</span>
               <span className="text-xs text-zinc-400 font-mono">
-                {item.type === 'video' ? 'ÁUDIO & VÍDEO' : 'FOTOGRAFIA DE ALTA RESOLUÇÃO'}
+                {item.type === 'video' ? 'ÁUDIO & VÍDEO' : 'FOTOGRAFIA AO VIVO'}
               </span>
             </div>
             <h3 className="font-display text-xl sm:text-2xl text-white uppercase tracking-wide">
               {item.title}
             </h3>
-            <p className="text-sm text-zinc-400 mt-0.5">{item.subtitle}</p>
+            <p className="text-xs sm:text-sm text-zinc-400 mt-0.5">{item.subtitle}</p>
+
             {item.commentary && (
-              <p className="mt-3 text-xs sm:text-sm text-zinc-300 bg-white/5 border border-white/10 p-3 max-w-2xl font-mono">
+              <p className="mt-3 text-xs sm:text-sm text-zinc-300 bg-white/5 border border-white/10 p-3 max-w-2xl font-mono leading-relaxed">
                 <span className="text-[#F000B8] font-semibold">Comentário: </span>
                 {item.commentary}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10">
+            {/* Secondary Back/Close button */}
             <button
+              type="button"
+              onClick={handleClose}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-mono uppercase tracking-wider bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white border border-white/15 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Voltar</span>
+            </button>
+
+            {/* Primary CTA: Scrolls straight to event data form */}
+            <button
+              type="button"
               onClick={() => {
-                onClose();
+                handleClose();
                 setTimeout(() => {
                   const el = document.getElementById('dados-evento') || document.getElementById('contratacoes');
                   el?.scrollIntoView({ behavior: 'smooth' });
-                }, 120);
+                }, 100);
               }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-[#8B2CFF] to-[#F000B8] text-white hover:brightness-110 transition-all shadow-lg shadow-[#8B2CFF]/20 cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-[#8B2CFF] to-[#F000B8] text-white hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-[#8B2CFF]/20 cursor-pointer"
             >
-              <span>Contratar DJ Hirla</span>
+              <span>Contratar Show</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
