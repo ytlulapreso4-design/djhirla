@@ -35,10 +35,10 @@ export const Booking: React.FC = () => {
   };
 
   return (
-    <section id="contratacoes" className="relative py-24 sm:py-32 bg-[#08080a] text-[#F5F5F5] border-t border-white/5">
+    <section id="contratacoes" className="relative py-24 sm:py-32 bg-[#08080a] text-[#F5F5F5] border-t border-white/5 overflow-hidden w-full max-w-full">
       
       {/* Background Stage Lighting */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-gradient-to-r from-[#8B2CFF]/15 to-[#F000B8]/15 blur-[160px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] max-w-full h-[450px] bg-gradient-to-r from-[#8B2CFF]/15 to-[#F000B8]/15 blur-[160px] pointer-events-none rounded-full" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         

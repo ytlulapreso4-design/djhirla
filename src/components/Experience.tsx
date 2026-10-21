@@ -5,10 +5,10 @@ import { MediaSlot } from './MediaSlot.tsx';
 
 export const Experience: React.FC = () => {
   return (
-    <section id="experiencia" className="relative py-20 sm:py-28 bg-[#050505] text-[#F5F5F5] overflow-hidden border-t border-white/5">
+    <section id="experiencia" className="relative py-20 sm:py-28 bg-[#050505] text-[#F5F5F5] overflow-hidden overflow-x-clip w-full max-w-full border-t border-white/5">
       {/* Background Ambience */}
-      <div className="absolute top-1/3 left-0 w-96 h-96 bg-[#8B2CFF]/10 blur-[130px] pointer-events-none rounded-full" />
-      <div className="absolute bottom-10 right-0 w-80 h-80 bg-[#F000B8]/10 blur-[130px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/3 left-0 w-72 sm:w-96 h-72 sm:h-96 bg-[#8B2CFF]/10 blur-[130px] pointer-events-none rounded-full" />
+      <div className="absolute bottom-10 right-0 w-64 sm:w-80 h-64 sm:h-80 bg-[#F000B8]/10 blur-[130px] pointer-events-none rounded-full" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         

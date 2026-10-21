@@ -1,85 +1,119 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, Volume2, VolumeX, ChevronDown } from 'lucide-react';
 import { ARTIST_CONFIG } from '../config/media.ts';
 
 export const Hero: React.FC = () => {
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const userInteractedRef = useRef(false);
   const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fadeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Audio start & gradual fade-out after 10 seconds
+  // Smooth fade-out after 18 seconds of audible playback
+  const scheduleFadeOut = useCallback(() => {
+    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+
+    fadeTimeoutRef.current = setTimeout(() => {
+      if (userInteractedRef.current) return;
+
+      const durationMs = 3500;
+      const stepMs = 100;
+      const totalSteps = durationMs / stepMs;
+      let step = 0;
+
+      fadeIntervalRef.current = setInterval(() => {
+        step++;
+        const nextVolume = Math.max(0, 1.0 - step / totalSteps);
+        if (videoRef.current) {
+          videoRef.current.volume = nextVolume;
+        }
+        if (step >= totalSteps) {
+          if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+          }
+          setIsMuted(true);
+        }
+      }, stepMs);
+    }, 18000);
+  }, []);
+
+  // Synchronous audio unlock function
+  const triggerAudioPlay = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.volume = 1.0;
+    video.muted = false;
+    const p = video.play();
+    if (p !== undefined) {
+      p.then(() => {
+        setIsMuted(false);
+        scheduleFadeOut();
+      }).catch(() => {
+        // Fallback: browser strictly insists on direct tap on button
+      });
+    }
+  }, [scheduleFadeOut]);
+
+  // Audio start on mount + unlock on ANY touch/interaction
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     video.volume = 1.0;
 
-    // Start fade out routine after 18s
-    const scheduleFadeOut = () => {
-      fadeTimeoutRef.current = setTimeout(() => {
-        if (userInteractedRef.current) return;
-
-        const durationMs = 3500;
-        const stepMs = 100;
-        const totalSteps = durationMs / stepMs;
-        let step = 0;
-
-        fadeIntervalRef.current = setInterval(() => {
-          step++;
-          const nextVolume = Math.max(0, 1.0 - step / totalSteps);
-          if (videoRef.current) {
-            videoRef.current.volume = nextVolume;
-          }
-          if (step >= totalSteps) {
-            if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
-            if (videoRef.current) {
-              videoRef.current.muted = true;
-            }
-            setIsMuted(true);
-          }
-        }, stepMs);
-      }, 18000);
-    };
-
-    // Attempt unmuted playback
+    // 1. Attempt unmuted play on mount
     video.muted = false;
-    const playPromise = video.play();
+    const initialPlay = video.play();
 
-    if (playPromise !== undefined) {
-      playPromise
+    if (initialPlay !== undefined) {
+      initialPlay
         .then(() => {
           setIsMuted(false);
           scheduleFadeOut();
         })
         .catch(() => {
-          // Browser prevented unmuted autoplay without prior user interaction
+          // Autoplay policy prevented sound before user gesture
           video.muted = true;
           setIsMuted(true);
           video.play().catch(() => {});
-
-          // Enable on first page interaction if user hasn't explicitly muted
-          const handleFirstClick = () => {
-            if (!userInteractedRef.current && videoRef.current) {
-              videoRef.current.muted = false;
-              videoRef.current.volume = 1.0;
-              setIsMuted(false);
-              scheduleFadeOut();
-            }
-            window.removeEventListener('pointerdown', handleFirstClick);
-          };
-          window.addEventListener('pointerdown', handleFirstClick, { once: true });
         });
     }
 
+    // 2. Global gesture listeners to unlock sound immediately on first touch/click/scroll
+    const unlockOnGesture = () => {
+      if (!userInteractedRef.current && videoRef.current && videoRef.current.muted) {
+        triggerAudioPlay();
+      }
+      removeGestureListeners();
+    };
+
+    const removeGestureListeners = () => {
+      window.removeEventListener('touchstart', unlockOnGesture);
+      window.removeEventListener('touchend', unlockOnGesture);
+      window.removeEventListener('click', unlockOnGesture);
+      window.removeEventListener('pointerdown', unlockOnGesture);
+      window.removeEventListener('scroll', unlockOnGesture);
+      document.removeEventListener('click', unlockOnGesture);
+    };
+
+    window.addEventListener('touchstart', unlockOnGesture, { passive: true, once: true });
+    window.addEventListener('touchend', unlockOnGesture, { passive: true, once: true });
+    window.addEventListener('click', unlockOnGesture, { passive: true, once: true });
+    window.addEventListener('pointerdown', unlockOnGesture, { passive: true, once: true });
+    window.addEventListener('scroll', unlockOnGesture, { passive: true, once: true });
+    document.addEventListener('click', unlockOnGesture, { passive: true, once: true });
+
     return () => {
+      removeGestureListeners();
       if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
       if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
     };
-  }, []);
+  }, [scheduleFadeOut, triggerAudioPlay]);
 
   const toggleMute = () => {
     userInteractedRef.current = true;
@@ -90,6 +124,7 @@ export const Hero: React.FC = () => {
       if (isMuted) {
         videoRef.current.muted = false;
         videoRef.current.volume = 1.0;
+        videoRef.current.play().catch(() => {});
         setIsMuted(false);
       } else {
         videoRef.current.muted = true;
@@ -106,9 +141,9 @@ export const Hero: React.FC = () => {
   };
 
   return (
-    <section className="relative w-full h-[100svh] min-h-[640px] flex items-center justify-center overflow-hidden bg-[#050505]">
+    <section className="relative w-full max-w-[100vw] h-[100svh] min-h-[640px] flex items-center justify-center overflow-hidden bg-[#050505]">
       {/* Background Video Layer */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 w-full h-full overflow-hidden">
         {!videoError && (
           <video
             ref={videoRef}
@@ -120,15 +155,15 @@ export const Hero: React.FC = () => {
             preload="metadata"
             onLoadedData={() => setVideoLoaded(true)}
             onError={() => setVideoError(true)}
-            className={`w-full h-full object-cover object-center transition-opacity duration-1000 ${
+            className={`w-full h-full object-cover object-center transition-opacity duration-700 ${
               videoLoaded ? 'opacity-70' : 'opacity-0'
             }`}
           />
         )}
 
-        {/* High-End Dark Atmospheric Stage Fallback */}
+        {/* Dark Stage Fallback & Lighting with strict viewport bounds */}
         {(!videoLoaded || videoError) && (
-          <div className="absolute inset-0 bg-[#050505] overflow-hidden">
+          <div className="absolute inset-0 bg-[#050505] overflow-hidden w-full h-full">
             <div
               className="absolute inset-0 opacity-20"
               style={{
@@ -136,9 +171,9 @@ export const Hero: React.FC = () => {
                 backgroundSize: '48px 48px',
               }}
             />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-4xl h-[450px] bg-gradient-to-b from-[#8B2CFF]/20 via-[#F000B8]/10 to-transparent blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 left-1/4 w-96 h-96 bg-[#8B2CFF]/15 blur-[120px] rounded-full pointer-events-none" />
-            <div className="absolute -bottom-24 right-1/4 w-96 h-96 bg-[#F000B8]/15 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[450px] bg-gradient-to-b from-[#8B2CFF]/20 via-[#F000B8]/10 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 left-1/4 w-72 sm:w-96 h-72 sm:h-96 bg-[#8B2CFF]/15 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute -bottom-24 right-1/4 w-72 sm:w-96 h-72 sm:h-96 bg-[#F000B8]/15 blur-[100px] rounded-full pointer-events-none" />
           </div>
         )}
 
@@ -148,25 +183,21 @@ export const Hero: React.FC = () => {
       </div>
 
       {/* Hero Foreground Content */}
-      <div className="relative z-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center flex flex-col items-center justify-center pt-16">
+      <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center flex flex-col items-center justify-center pt-14 sm:pt-16">
         
-        {/* Subtitle / Genre Tag */}
-        <div className="inline-flex items-center gap-3 px-4 py-1.5 mb-5 sm:mb-6 border border-white/10 bg-white/5 backdrop-blur-md">
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-3 bg-[#8B2CFF] animate-wave-1" />
-            <span className="w-1.5 h-5 bg-[#F000B8] animate-wave-2" />
-            <span className="w-1.5 h-2 bg-[#8B2CFF] animate-wave-3" />
-            <span className="w-1.5 h-4 bg-white animate-wave-4" />
-          </div>
-          <span className="text-[11px] sm:text-xs font-mono tracking-[0.25em] uppercase text-zinc-300">
-            {ARTIST_CONFIG.subtagline}
-          </span>
+        {/* Animated Sound Equalizer Waves Only (No Text, As Requested) */}
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-2 mb-5 sm:mb-6 border border-white/10 bg-white/5 backdrop-blur-md">
+          <span className="w-1.5 h-3 bg-[#8B2CFF] animate-wave-1" />
+          <span className="w-1.5 h-5 bg-[#F000B8] animate-wave-2" />
+          <span className="w-1.5 h-2.5 bg-[#8B2CFF] animate-wave-3" />
+          <span className="w-1.5 h-4 bg-white animate-wave-4" />
+          <span className="w-1.5 h-5 bg-[#F000B8] animate-wave-5" />
         </div>
 
         {/* Monumental Headline: DJ HIRLA */}
-        <div className="relative my-1 select-none">
+        <div className="relative my-1 select-none w-full max-w-full overflow-hidden">
           <h1
-            className="font-display text-[clamp(3.8rem,14vw,10.5rem)] leading-[0.88] uppercase tracking-normal text-white drop-shadow-[0_10px_35px_rgba(0,0,0,0.8)]"
+            className="font-display text-[clamp(3.5rem,13vw,9.5rem)] leading-[0.9] uppercase tracking-normal text-white drop-shadow-[0_10px_35px_rgba(0,0,0,0.8)]"
             style={{ textWrap: 'balance' }}
           >
             DJ HIRLA
@@ -174,18 +205,18 @@ export const Hero: React.FC = () => {
         </div>
 
         {/* Impact Phrase */}
-        <p className="mt-4 sm:mt-6 font-display text-xl sm:text-2xl md:text-3xl uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 max-w-2xl">
+        <p className="mt-4 sm:mt-5 font-display text-xl sm:text-2xl md:text-3xl uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 max-w-2xl px-2">
           {ARTIST_CONFIG.tagline}
         </p>
 
         {/* Short value statement */}
-        <p className="mt-3 text-xs sm:text-sm text-zinc-400 font-mono tracking-wide max-w-lg">
+        <p className="mt-3 text-xs sm:text-sm text-zinc-400 font-mono tracking-wide max-w-lg px-4">
           A fusão explosiva do grave eletrônico e o ritmo do funk brasileiro para transformar a pista do seu evento.
         </p>
 
         {/* CTA Button Group */}
-        <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          {/* Primary CTA */}
+        <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto px-4 sm:px-0">
+          {/* Primary CTA: Scrolls straight to Event Data Builder Form */}
           <button
             onClick={() => {
               const el = document.getElementById('dados-evento') || document.getElementById('contratacoes');
@@ -200,19 +231,33 @@ export const Hero: React.FC = () => {
           {/* Secondary CTA */}
           <button
             onClick={scrollToNextSection}
-            className="w-full sm:w-auto px-8 py-4 text-xs sm:text-sm font-bold uppercase tracking-widest bg-black/50 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/20 hover:border-white/40 active:scale-[0.98] transition-all backdrop-blur-md flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-8 py-4 text-xs sm:text-sm font-bold uppercase tracking-widest bg-black/50 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/20 hover:border-white/40 active:scale-[0.98] transition-all backdrop-blur-md flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>VER MOMENTOS & SHOWS</span>
             <ChevronDown className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Unmissable audio toggle prompt if muted on entry */}
+        {isMuted && (
+          <button
+            onClick={() => {
+              userInteractedRef.current = true;
+              triggerAudioPlay();
+            }}
+            className="mt-6 inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#8B2CFF] to-[#F000B8] text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-[#8B2CFF]/40 animate-pulse hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20"
+          >
+            <Volume2 className="w-4 h-4 fill-white" />
+            <span>Ativar Som do Beat (18s)</span>
+          </button>
+        )}
       </div>
 
-      {/* Sound Toggle (Unmute / Mute / Reactivate permanently) */}
+      {/* Persistent Corner Sound Toggle */}
       <button
         onClick={toggleMute}
         aria-label={isMuted ? 'Ativar som do show' : 'Mutar som'}
-        className="absolute bottom-6 right-6 z-20 flex items-center gap-2 px-3.5 py-2 bg-black/60 hover:bg-black/90 border border-white/20 hover:border-[#F000B8] text-white text-xs font-mono backdrop-blur-md transition-all group cursor-pointer"
+        className="absolute bottom-6 right-6 z-20 flex items-center gap-2 px-3.5 py-2 bg-black/70 hover:bg-black/90 border border-white/20 hover:border-[#F000B8] text-white text-xs font-mono backdrop-blur-md transition-all group cursor-pointer shadow-lg"
       >
         {isMuted ? (
           <>

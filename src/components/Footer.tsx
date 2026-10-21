@@ -10,7 +10,7 @@ export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="relative bg-[#050505] text-[#F5F5F5] border-t border-white/10 pt-16 sm:pt-20 pb-12 overflow-hidden">
+    <footer className="relative bg-[#050505] text-[#F5F5F5] border-t border-white/10 pt-16 sm:pt-20 pb-12 overflow-hidden overflow-x-clip w-full max-w-full">
       
       {/* Subtle Bottom Ambient Aura */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-36 bg-[#8B2CFF]/5 blur-3xl pointer-events-none" />

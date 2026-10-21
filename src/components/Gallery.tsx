@@ -14,11 +14,11 @@ export const Gallery: React.FC = () => {
   });
 
   return (
-    <section id="momentos" className="relative py-24 sm:py-32 bg-[#050505] text-[#F5F5F5] border-t border-white/5">
+    <section id="momentos" className="relative py-24 sm:py-32 bg-[#050505] text-[#F5F5F5] border-t border-white/5 overflow-hidden w-full max-w-full">
       
       {/* Background Glow */}
-      <div className="absolute top-1/4 right-0 w-96 h-96 bg-[#8B2CFF]/10 blur-[140px] pointer-events-none rounded-full" />
-      <div className="absolute bottom-1/4 left-0 w-80 h-80 bg-[#F000B8]/10 blur-[140px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/4 right-0 w-72 sm:w-96 h-72 sm:h-96 bg-[#8B2CFF]/10 blur-[140px] pointer-events-none rounded-full" />
+      <div className="absolute bottom-1/4 left-0 w-64 sm:w-80 h-64 sm:h-80 bg-[#F000B8]/10 blur-[140px] pointer-events-none rounded-full" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         

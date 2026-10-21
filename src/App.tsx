@@ -16,12 +16,12 @@ import { ARTIST_CONFIG } from './config/media.ts';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-[#050505] text-[#F5F5F5] selection:bg-[#F000B8] selection:text-white flex flex-col font-body">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#050505] text-[#F5F5F5] selection:bg-[#F000B8] selection:text-white flex flex-col font-body">
       {/* Fixed Header */}
       <Navbar />
 
       {/* Main Landing Page Sections */}
-      <main className="flex-1">
+      <main className="flex-1 w-full max-w-[100vw] overflow-x-hidden">
         {/* 1. HERO / DJ HIRLA (Vídeo com áudio inicial + 10s fade-out suave) */}
         <Hero />
 
