@@ -5,68 +5,63 @@ import { ARTIST_CONFIG } from '../config/media.ts';
 export const Hero: React.FC = () => {
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const userInteractedRef = useRef(false);
-  const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fadeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userExplicitlyMutedRef = useRef(false);
 
-  // Smooth fade-out after 18 seconds of audible playback
-  const scheduleFadeOut = useCallback(() => {
-    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
-
-    fadeTimeoutRef.current = setTimeout(() => {
-      if (userInteractedRef.current) return;
-
-      const durationMs = 3500;
-      const stepMs = 100;
-      const totalSteps = durationMs / stepMs;
-      let step = 0;
-
-      fadeIntervalRef.current = setInterval(() => {
-        step++;
-        const nextVolume = Math.max(0, 1.0 - step / totalSteps);
-        if (videoRef.current) {
-          videoRef.current.volume = nextVolume;
-        }
-        if (step >= totalSteps) {
-          if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
-          if (videoRef.current) {
-            videoRef.current.muted = true;
-          }
-          setIsMuted(true);
-        }
-      }, stepMs);
-    }, 18000);
-  }, []);
-
-  // Synchronous audio unlock function
-  const triggerAudioPlay = useCallback(() => {
+  // Synchronously unmute and play
+  const enableSound = useCallback(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || userExplicitlyMutedRef.current) return;
 
-    video.volume = 1.0;
     video.muted = false;
+    video.volume = 1.0;
     const p = video.play();
     if (p !== undefined) {
       p.then(() => {
         setIsMuted(false);
-        scheduleFadeOut();
       }).catch(() => {
-        // Fallback: browser strictly insists on direct tap on button
+        // Kept muted until browser permits
       });
     }
-  }, [scheduleFadeOut]);
+  }, []);
 
-  // Audio start on mount + unlock on ANY touch/interaction
+  // Continuous loop crossfade:
+  // When approaching the end of the video, volume fades down gradually.
+  // As it loops back to the start, volume fades back up smoothly.
+  const handleTimeUpdate = () => {
+    const video = videoRef.current;
+    if (!video || userExplicitlyMutedRef.current || video.muted) return;
+
+    const duration = video.duration;
+    const currentTime = video.currentTime;
+    if (!duration || isNaN(duration)) return;
+
+    const fadeOutTime = 3.5; // Starts fading down 3.5s before video ends
+    const fadeInTime = 2.0;  // Fades back up in the first 2.0s of the loop
+    const timeRemaining = duration - currentTime;
+
+    if (timeRemaining <= fadeOutTime) {
+      // Smooth fade-down at the end of the video
+      const vol = Math.max(0, timeRemaining / fadeOutTime);
+      video.volume = vol;
+    } else if (currentTime <= fadeInTime) {
+      // Smooth fade-in as it restarts
+      const vol = Math.min(1, Math.max(0.15, currentTime / fadeInTime));
+      video.volume = vol;
+    } else {
+      video.volume = 1.0;
+    }
+  };
+
+  // Auto-play audio on entry + gesture unlock fallback for restrictive mobile browsers
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     video.volume = 1.0;
 
-    // 1. Attempt unmuted play on mount
+    // 1. Attempt unmuted playback immediately on entry
     video.muted = false;
     const initialPlay = video.play();
 
@@ -74,62 +69,58 @@ export const Hero: React.FC = () => {
       initialPlay
         .then(() => {
           setIsMuted(false);
-          scheduleFadeOut();
         })
         .catch(() => {
-          // Autoplay policy prevented sound before user gesture
+          // If browser policy temporarily blocks cold sound before first touch:
           video.muted = true;
           setIsMuted(true);
           video.play().catch(() => {});
         });
     }
 
-    // 2. Global gesture listeners to unlock sound immediately on first touch/click/scroll
-    const unlockOnGesture = () => {
-      if (!userInteractedRef.current && videoRef.current && videoRef.current.muted) {
-        triggerAudioPlay();
+    // 2. Gesture listener: immediately unmutes on first touch, scroll or click anywhere
+    const handleGesture = () => {
+      if (!userExplicitlyMutedRef.current && videoRef.current && videoRef.current.muted) {
+        enableSound();
       }
-      removeGestureListeners();
+      cleanup();
     };
 
-    const removeGestureListeners = () => {
-      window.removeEventListener('touchstart', unlockOnGesture);
-      window.removeEventListener('touchend', unlockOnGesture);
-      window.removeEventListener('click', unlockOnGesture);
-      window.removeEventListener('pointerdown', unlockOnGesture);
-      window.removeEventListener('scroll', unlockOnGesture);
-      document.removeEventListener('click', unlockOnGesture);
+    const cleanup = () => {
+      window.removeEventListener('touchstart', handleGesture);
+      window.removeEventListener('touchend', handleGesture);
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('scroll', handleGesture);
+      window.removeEventListener('pointerdown', handleGesture);
     };
 
-    window.addEventListener('touchstart', unlockOnGesture, { passive: true, once: true });
-    window.addEventListener('touchend', unlockOnGesture, { passive: true, once: true });
-    window.addEventListener('click', unlockOnGesture, { passive: true, once: true });
-    window.addEventListener('pointerdown', unlockOnGesture, { passive: true, once: true });
-    window.addEventListener('scroll', unlockOnGesture, { passive: true, once: true });
-    document.addEventListener('click', unlockOnGesture, { passive: true, once: true });
+    window.addEventListener('touchstart', handleGesture, { passive: true, once: true });
+    window.addEventListener('touchend', handleGesture, { passive: true, once: true });
+    window.addEventListener('click', handleGesture, { passive: true, once: true });
+    window.addEventListener('scroll', handleGesture, { passive: true, once: true });
+    window.addEventListener('pointerdown', handleGesture, { passive: true, once: true });
 
     return () => {
-      removeGestureListeners();
-      if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+      cleanup();
     };
-  }, [scheduleFadeOut, triggerAudioPlay]);
+  }, [enableSound]);
 
   const toggleMute = () => {
-    userInteractedRef.current = true;
-    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+    const video = videoRef.current;
+    if (!video) return;
 
-    if (videoRef.current) {
-      if (isMuted) {
-        videoRef.current.muted = false;
-        videoRef.current.volume = 1.0;
-        videoRef.current.play().catch(() => {});
-        setIsMuted(false);
-      } else {
-        videoRef.current.muted = true;
-        setIsMuted(true);
-      }
+    if (!isMuted) {
+      // User explicitly mutes the music
+      userExplicitlyMutedRef.current = true;
+      video.muted = true;
+      setIsMuted(true);
+    } else {
+      // User explicitly un-mutes
+      userExplicitlyMutedRef.current = false;
+      video.muted = false;
+      video.volume = 1.0;
+      video.play().catch(() => {});
+      setIsMuted(false);
     }
   };
 
@@ -153,6 +144,7 @@ export const Hero: React.FC = () => {
             loop
             playsInline
             preload="metadata"
+            onTimeUpdate={handleTimeUpdate}
             onLoadedData={() => setVideoLoaded(true)}
             onError={() => setVideoError(true)}
             className={`w-full h-full object-cover object-center transition-opacity duration-700 ${
@@ -185,7 +177,7 @@ export const Hero: React.FC = () => {
       {/* Hero Foreground Content */}
       <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center flex flex-col items-center justify-center pt-14 sm:pt-16">
         
-        {/* Animated Sound Equalizer Waves Only (No Text, As Requested) */}
+        {/* Animated Sound Equalizer Waves Only (No Text) */}
         <div className="inline-flex items-center gap-1.5 px-3.5 py-2 mb-5 sm:mb-6 border border-white/10 bg-white/5 backdrop-blur-md">
           <span className="w-1.5 h-3 bg-[#8B2CFF] animate-wave-1" />
           <span className="w-1.5 h-5 bg-[#F000B8] animate-wave-2" />
@@ -238,39 +230,26 @@ export const Hero: React.FC = () => {
           </button>
         </div>
 
-        {/* Unmissable audio toggle prompt if muted on entry */}
-        {isMuted && (
-          <button
-            onClick={() => {
-              userInteractedRef.current = true;
-              triggerAudioPlay();
-            }}
-            className="mt-6 inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#8B2CFF] to-[#F000B8] text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-[#8B2CFF]/40 animate-pulse hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20"
-          >
-            <Volume2 className="w-4 h-4 fill-white" />
-            <span>Ativar Som do Beat (18s)</span>
-          </button>
-        )}
       </div>
 
-      {/* Persistent Corner Sound Toggle */}
+      {/* Dedicated Corner Sound Controller: Click to Mute / Unmute */}
       <button
         onClick={toggleMute}
-        aria-label={isMuted ? 'Ativar som do show' : 'Mutar som'}
-        className="absolute bottom-6 right-6 z-20 flex items-center gap-2 px-3.5 py-2 bg-black/70 hover:bg-black/90 border border-white/20 hover:border-[#F000B8] text-white text-xs font-mono backdrop-blur-md transition-all group cursor-pointer shadow-lg"
+        aria-label={isMuted ? 'Ativar som' : 'Desativar som'}
+        className="absolute bottom-6 right-6 z-20 flex items-center gap-2 px-4 py-2.5 bg-black/75 hover:bg-black/95 border border-white/20 hover:border-[#F000B8] text-white text-xs font-mono backdrop-blur-md transition-all group cursor-pointer shadow-xl"
       >
         {isMuted ? (
           <>
             <VolumeX className="w-4 h-4 text-zinc-400 group-hover:text-white" />
-            <span className="text-zinc-400 group-hover:text-white uppercase tracking-wider text-[11px]">
+            <span className="text-zinc-300 group-hover:text-white uppercase tracking-wider text-[11px] font-semibold">
               Ativar Som
             </span>
           </>
         ) : (
           <>
             <Volume2 className="w-4 h-4 text-[#F000B8] animate-pulse" />
-            <span className="text-white uppercase tracking-wider text-[11px]">
-              Som Ligado
+            <span className="text-white uppercase tracking-wider text-[11px] font-semibold">
+              Desativar Som
             </span>
           </>
         )}
