@@ -26,9 +26,6 @@ export const Footer: React.FC = () => {
             <h2 className="font-display text-4xl sm:text-6xl md:text-7xl uppercase tracking-normal text-white">
               DJ HIRLA
             </h2>
-            <p className="font-mono text-xs sm:text-sm text-zinc-400 uppercase tracking-widest mt-1">
-              Eletrofunk • Graves & Experiência Ao Vivo
-            </p>
           </div>
 
           {/* Social Links */}
@@ -71,8 +68,6 @@ export const Footer: React.FC = () => {
 
           <div className="flex items-center gap-4 text-zinc-400">
             <span>Goiás / Brasil</span>
-            <span>•</span>
-            <span className="text-zinc-300">O grave não pede licença.</span>
           </div>
         </div>
 
