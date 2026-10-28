@@ -66,8 +66,18 @@ export const Footer: React.FC = () => {
             © {currentYear} DJ HIRLA. Todos os direitos reservados.
           </div>
 
-          <div className="flex items-center gap-4 text-zinc-400">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-zinc-400">
             <span>Goiás / Brasil</span>
+            <span className="opacity-40">•</span>
+            <a
+              href="https://www.instagram.com/clicaebio"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.07] hover:bg-white/[0.12] border border-white/20 hover:border-[#F000B8] transition-all duration-200 group shadow-sm"
+            >
+              <span className="text-zinc-300 text-xs font-mono">Produzido por</span>
+              <span className="text-white group-hover:text-[#F000B8] transition-colors font-bold text-xs tracking-wide">ClicaÊ Bio</span>
+            </a>
           </div>
         </div>
 
